@@ -263,7 +263,7 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
             // All Doku $states get type param
             // Only figure and table supported.
             $type = $params['type'];
-            if (!in_array($type, ['figure', 'table'])){
+            if (!in_array($type, ['figure', 'table', 'subfigure'])){
                 return true;
             }
 
