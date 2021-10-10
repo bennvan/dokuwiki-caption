@@ -3,6 +3,7 @@
  * DokuWiki Plugin caption (Syntax Component)
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
+ * @author  Ben van Magill <ben.vanmagill16@gmail.com>
  * @author  Till Biskup <till@till-biskup>
  */
 
@@ -49,57 +50,74 @@ class syntax_plugin_caption_reference extends DokuWiki_Syntax_Plugin {
         $this->Lexer->addSpecialPattern('{{ref>.+?}}',$mode,'plugin_caption_reference');
     }
 
-    public function handle($match, $state, $pos, Doku_Handler $handler){
-        if (!(strpos($match,'{{ref>')===false)) {
-              return array($state, substr($match,6,-2));
+    public function number_to_alphabet($number) {
+        $number = intval($number);
+        if ($number <= 0) {
+            return '';
         }
-        return array();
+        $alphabet = '';
+        while($number != 0) {
+            $p = ($number - 1) % 26;
+            $number = intval(($number - $p) / 26);
+            $alphabet = chr(65 + $p) . $alphabet;
+        }
+        return strtolower($alphabet);
+    }
+
+    public function handle($match, $state, $pos, Doku_Handler $handler){
+        if (strpos($match,'{{ref>') === false) {
+            return array();
+        }
+        return array($state, substr($match,6,-2));
     }
 
     public function render($mode, Doku_Renderer $renderer, $data) {
-        if ($mode == 'xhtml') {
+        if (empty($data)) {
+            return false;
+        }
 
-	    list($state,$match) = $data;
-            
-            switch ($state) {
-                case DOKU_LEXER_SPECIAL :
-                    global $caption_labels;
-                    $renderer->doc .= '<a href="#'.$match.'">';
-                    if ($caption_labels[$match]) {
-                        $renderer->doc .= $caption_labels[$match];
-                    } else {
-                        $renderer->doc .= '##REF:'.$match.'##';
-                    }
-                    $renderer->doc .= '</a>';
-                    break;
+        list($state,$match) = $data;
+
+        global $caption_count;
+
+        $label = $match;
+        $langset = ($this->getConf('abbrev') ? 'abbrev' : 'long');
+
+        // Only special state allowed
+        if ($state !== DOKU_LEXER_SPECIAL) {
+                return true;
             }
+
+        if ($mode == 'xhtml') {
+            $markup = '<a href="#'.$label.'">';
+            // Retrieve the figure label from the global array
+            if ($caption_count[$label]) {
+                list($type, $num, $parnum) = $caption_count[$label];
+                if (substr($type, 0, 3) == 'sub') {
+                    $type = substr($type, 3);
+                    $markup .= $this->getLang($type.$langset).' '.$parnum.'('.$this->number_to_alphabet($num).')';
+                }
+                else{
+                    $markup .= $this->getLang($type.$langset).' '.$num;
+                }
+            } else {
+                $markup .= '??REF:'.$label.'??';
+            }
+            $markup .= '</a>';
+            $renderer->doc .= $markup;
+
             return true;
         }
         
         if ($mode == 'latex') {
-
-            list($state,$match) = $data;
-            
-            switch ($state) {
-                case DOKU_LEXER_SPECIAL :
-                    $renderer->doc .= '\ref{'.$match.'}';
-                    break;
-            }
+            $renderer->doc .= '\ref{'.$label.'}';
             return true;
         }
-        
-        if ($mode == 'odt') {
 
-            list($state,$match) = $data;
-            
-            switch ($state) {
-                case DOKU_LEXER_SPECIAL :
-                    $renderer->doc .= '<text:sequence-ref text:reference-format="value" text:ref-name="'.$match.'">';
-                    global $caption_labels;
-                    $renderer->doc .= $caption_labels[$match];
-                    $renderer->doc .= '</text:sequence-ref>';
-                    break;
-            }
+        if ($mode == 'odt') {
+            $renderer->doc .= '<text:sequence-ref text:reference-format="value" text:ref-name="'.$label.'">';
+            $renderer->doc .= $caption_count[$label];
+            $renderer->doc .= '</text:sequence-ref>';
             return true;
         }
 

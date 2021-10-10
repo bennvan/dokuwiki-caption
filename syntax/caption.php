@@ -3,6 +3,7 @@
  * DokuWiki Plugin caption (Syntax Component)
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
+ * @author  Ben van Magill <ben.vanmagill16@gmail.com>
  * @author  Till Biskup <till@till-biskup>
  */
 
@@ -15,27 +16,16 @@ if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 
 require_once DOKU_PLUGIN.'syntax.php';
 
-class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin {
+class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin 
+{
 
     /**
-     * Array containing the types of environment supported by the plugin
+     * Array containing the types of environment supported by the plugin (to reset counter)
      */
-    private $_types = array('figure','table','codeblock','fileblock');
-
-    private $_type = '';
-    private $_incaption = false;
-
-    private $_fignum = 1;
-    private $_tabnum = 1;
-    private $_codenum = 1;
-    private $_filenum = 1;
-    
-    private $_label = '';
-    
-    private $_figlabels = array();
-    private $_tablabels = array();
-    private $_codelabels = array();
-    private $_filelabels = array();
+    private static $_types = array('figure', 'table','codeblock','fileblock');
+    private static $_type = '';
+    private static $_incaption = false;
+    private static $_label = '';
     
     /**
      * return some info
@@ -67,8 +57,6 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin {
         $this->Lexer->addEntryPattern('<table.*?>(?=.*</table>)',$mode,'plugin_caption_caption');
         $this->Lexer->addEntryPattern('<codeblock.*?>(?=.*</codeblock>)',$mode,'plugin_caption_caption');
         $this->Lexer->addEntryPattern('<fileblock.*?>(?=.*</fileblock>)',$mode,'plugin_caption_caption');
-        $this->Lexer->addPattern('<caption>(?=.*</caption>)','plugin_caption_caption');
-        $this->Lexer->addPattern('</caption>','plugin_caption_caption');
     }
 
     public function postConnect() {
@@ -76,311 +64,237 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin {
         $this->Lexer->addExitPattern('</table>','plugin_caption_caption');
         $this->Lexer->addExitPattern('</codeblock>','plugin_caption_caption');
         $this->Lexer->addExitPattern('</fileblock>','plugin_caption_caption');
+        $this->Lexer->addPattern('<figcaption>(?=.*</figcaption>)','plugin_caption_caption');
+        $this->Lexer->addPattern('</figcaption>','plugin_caption_caption');
+    }
+
+    public function number_to_alphabet($number) {
+        $number = intval($number);
+        if ($number <= 0) {
+            return '';
+        }
+        $alphabet = '';
+        while($number != 0) {
+            $p = ($number - 1) % 26;
+            $number = intval(($number - $p) / 26);
+            $alphabet = chr(65 + $p) . $alphabet;
+        }
+        return strtolower($alphabet);
     }
 
     public function handle($match, $state, $pos, Doku_Handler $handler){
-        switch ($state) {
-          case DOKU_LEXER_ENTER :
-	      $match = substr($match,1,-1);
-              return array($state, $match);
-	  case DOKU_LEXER_MATCHED :
-              return array($state, $match);
-	  case DOKU_LEXER_UNMATCHED :
-              return array($state, $match);
-          case DOKU_LEXER_EXIT :
-              $match = substr($match,1,-1);
-              return array($state, $match);
-	  case DOKU_LEXER_SPECIAL :
-              if (!(strpos($match,'{{setcounter')===false)) {
-                  return array($state, substr($match,13,-2));
-              }
+        $params = [];
+        if ($state == DOKU_LEXER_ENTER){
+            global $caption_count;
+            // INPUT $match:<type alignment|label>
+            // Strip the <>
+            $match = substr($match,1,-1);
+            // Retrieve the label name if any
+            list($matches, $label) = explode('|', $match, 2);
+            // retrieve type and alignment if any
+            list($type, $alignment) = explode(' ', trim($matches), 2);
+
+            // Set dynamic class counter variable
+            $type_counter_def = '$_'.$type.'_count';
+
+            // Increment the counter of relevant type
+            // Store the type in class for caption match to determine what html tag to use
+            // This is ok since we will never have nested figures and more than one caption
+            $this::$_type = $type;
+            $this->{$type_counter_def} = (!isset($this->{$type_counter_def}) ? 1 : $this->{$type_counter_def}+1);
+
+            // save params to class variables (cached for use in render)
+            $type_counter = $this->{$type_counter_def};
+
+            // Set global variable if theres a label (used for ref)
+            if ($label) {
+                $label = trim($label);
+                // Check if we are counting a subtype to store parent in array for references
+                if (substr($type, 0, 3) == 'sub') {
+                    $partype = substr($type, 3);
+                    $parcount = $this->{'$_'.$partype.'_count'};
+                }
+                $caption_count[$label] = array($type, $type_counter, $parcount);
+                $this::$_label = $label;
+            }
+
+            // Set the params
+            $params['xhtml']['tagtype'] = (in_array($type, ['figure', 'subfigure']) ? 'figure' : 'div');
+            $params['label'] = $label; 
+            $params['alignment'] = (!empty($alignment) ? $alignment : 'noalign');
+            $params['type'] = $type;
+
+            return array($state, $match, $pos, $params);
         }
-        return array();
+        if ($state == DOKU_LEXER_MATCHED){
+            // Case of caption. 
+            // Toggle the incaption flag
+            echo $match;
+            $this::$_incaption = !$this::$_incaption;
+            $type = $this::$_type;
+            $params['label'] = $this::$_label;
+            $params['xhtml']['captagtype'] = (in_array($type, ['figure', 'subfigure']) ? 'figcaption' : 'div');
+            $params['incaption'] = $this::$_incaption;
+            $params['type_counter'] = $this->{'$_'.$type.'_count'};
+            $params['type'] = $type;
+
+            return array($state, $match, $pos, $params);
+        }
+        if ($state == DOKU_LEXER_UNMATCHED){
+            return array($state, $match, $pos, $params);
+        }
+        if ($state == DOKU_LEXER_EXIT){
+            $type = $this::$_type;
+
+            if (substr($type, 0, 3) == 'sub') {
+                // Change environment back to non sub type
+                $this::$_type = substr($type, 3);
+            }
+            else {
+                // reset subtype counter
+                // echo $type;
+                $this->{'$_sub'.$type.'_count'} = 0;
+            }
+            $params['type'] = $type;
+            $params['xhtml']['tagtype'] = (in_array($type, ['figure', 'subfigure']) ? 'figure' : 'div');
+            return array($state, $match, $pos, $params);
+        }
+        if ($state == DOKU_LEXER_SPECIAL){
+            if (strpos($match,'{{setcounter') === false) {
+                return true;
+            }
+
+            $match = substr($match,13,-2);
+            list($type,$num) = explode('=',trim($match));
+
+            $type = trim($type);
+            $num = (int) trim($num);
+
+            if (!in_array($type,$this::$_types)) {
+                return false;
+            }
+
+            // Update the counter. offset by 1 since counter is incremented on caption enter
+            $this->{'$_'.$type.'_count'} = $num-1;
+
+            return true;
+        }
+        // this should never be reached
+        return true;
     }
 
     public function render($mode, Doku_Renderer $renderer, $data) {
-        if ($mode == 'xhtml') {
 
-            list($state,$match) = $data;
-            
-            switch ($state) {
-                case DOKU_LEXER_ENTER :
-                    // Handle case that there is a label in the opening tag
-                    list($match,$label) = explode(' ',$match);
-                    if (in_array($match,$this->_types)) {
-                        $this->_type = $match;
-                        switch ($this->_type) {
-                            case "figure" :
-                                $renderer->doc .= '<figure class="plugin_caption_figure"';
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    global $caption_labels;
-                                    $caption_labels[$label] = $this->_fignum;
-                                    $this->_figlabels[$this->_fignum] = $label;
-                                    $renderer->doc .= ' id="'.$renderer->_xmlEntities($label).'"';
-                                    // WARNING: Potential harmful way of handling references
-                                    //          that have already been printed
-                                    $pattern = '##REF:'.$this->_figlabels[$this->_fignum].'##';
-                                    if (strpos($renderer->doc, $pattern) !== FALSE) { 
-                                        $renderer->doc = str_replace($pattern, $this->_fignum, $renderer->doc);
-                                    }
-                                }
-                                $renderer->doc .= '>';
-                                break;
-                            case "table" :
-                                $renderer->doc .= '<div class="plugin_caption_table"';
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    global $caption_labels;
-                                    $caption_labels[$label] = $this->_tabnum;
-                                    $this->_tablabels[$this->_tabnum] = $label;
-                                    $renderer->doc .= ' id="'.$renderer->_xmlEntities($label).'"';
-                                    // WARNING: Potential harmful way of handling references
-                                    //          that have already been printed
-                                    $pattern = '##REF:'.$this->_tablabels[$this->_tabnum].'##';
-                                    if (strpos($renderer->doc, $pattern) !== FALSE) { 
-                                        $renderer->doc = str_replace($pattern, $this->_tabnum, $renderer->doc);
-                                    }
-                                }
-                                $renderer->doc .= '>';
-                                break;
-                            case "codeblock" :
-                                $renderer->doc .= '<div class="plugin_caption_codeblock"';
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    global $caption_labels;
-                                    $caption_labels[$label] = $this->_tabnum;
-                                    $this->_tablabels[$this->_codenum] = $label;
-                                    $renderer->doc .= ' id="'.$renderer->_xmlEntities($label).'"';
-                                    // WARNING: Potential harmful way of handling references
-                                    //          that have already been printed
-                                    $pattern = '##REF:'.$this->_codelabels[$this->_codenum].'##';
-                                    if (strpos($renderer->doc, $pattern) !== FALSE) { 
-                                        $renderer->doc = str_replace($pattern, $this->_codenum, $renderer->doc);
-                                    }
-                                }
-                                $renderer->doc .= '>';
-                                break;
-                            case "fileblock" :
-                                $renderer->doc .= '<div class="plugin_caption_fileblock"';
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    global $caption_labels;
-                                    $caption_labels[$label] = $this->_filenum;
-                                    $this->_tablabels[$this->_filenum] = $label;
-                                    $renderer->doc .= ' id="'.$renderer->_xmlEntities($label).'"';
-                                    // WARNING: Potential harmful way of handling references
-                                    //          that have already been printed
-                                    $pattern = '##REF:'.$this->_filelabels[$this->_filenum].'##';
-                                    if (strpos($renderer->doc, $pattern) !== FALSE) { 
-                                        $renderer->doc = str_replace($pattern, $this->_filenum, $renderer->doc);
-                                    }
-                                }
-                                $renderer->doc .= '>';
-                                break;
-                        }
-                    }
-                    break;
+        if (empty($data)) {
+            return false;
+        }
 
-		case DOKU_LEXER_MATCHED :
-		    // return the dokuwiki markup within the caption tags
-                    if (!$this->_incaption) {
-                        $this->_incaption = true;
-                        switch ($this->_type) {
-                            case "figure" :
-                                $renderer->doc .= '<figcaption class="plugin_caption_caption"><span class="plugin_caption_caption_number"';
-                                if(array_key_exists($this->_fignum,$this->_figlabels)) {
-                                    $renderer->doc .= ' title="'
-                                                        .$this->_figlabels[$this->_fignum].'"';
-                                }
-                                $renderer->doc .= '>';
-                                if ($this->getConf('abbrev')) {
-                                    $renderer->doc .= $this->getLang('figureabbrev');
-                                } else {
-                                    $renderer->doc .= $this->getLang('figurelong');
-                                }
-                                $renderer->doc .= ' ' . $this->_fignum . ':</span>';
-                                $renderer->doc .= ' <span class="plugin_caption_caption_text">';
-                                break;
-                            case "table" :
-                                $renderer->doc .= '<div class="plugin_caption_caption"><span class="plugin_caption_caption_number"';
-                                if(array_key_exists($this->_tabnum,$this->_tablabels)) {
-                                    $renderer->doc .= ' title="'
-                                                        .$this->_tablabels[$this->_tabnum].'"';
-                                }
-                                $renderer->doc .= '>';
-                                if ($this->getConf('abbrev')) {
-                                    $renderer->doc .= $this->getLang('tableabbrev');
-                                } else {
-                                    $renderer->doc .= $this->getLang('tablelong');
-                                }
-                                $renderer->doc .= ' ' . $this->_tabnum . ':</span>';
-                                $renderer->doc .= ' <span class="captiontext">';
-                                break;
-                            case "codeblock" :
-                                $renderer->doc .= '<div class="plugin_caption_caption"><span class="plugin_caption_caption_number"';
-                                if(array_key_exists($this->_codenum,$this->_codelabels)) {
-                                    $renderer->doc .= ' title="'
-                                                        .$this->_codelabels[$this->_codenum].'"';
-                                }
-                                $renderer->doc .= '>';
-                                if ($this->getConf('abbrev')) {
-                                    $renderer->doc .= $this->getLang('codeabbrev');
-                                } else {
-                                    $renderer->doc .= $this->getLang('codelong');
-                                }
-                                $renderer->doc .= ' ' . $this->_codenum . ':</span>';
-                                $renderer->doc .= ' <span class="captiontext">';
-                                break;
-                            case "fileblock" :
-                                $renderer->doc .= '<div class="plugin_caption_caption"><span class="plugin_caption_caption_number"';
-                                if(array_key_exists($this->_filenum,$this->_filelabels)) {
-                                    $renderer->doc .= ' title="'
-                                                        .$this->_tablabels[$this->_filenum].'"';
-                                }
-                                $renderer->doc .= '>';
-                                if ($this->getConf('abbrev')) {
-                                    $renderer->doc .= $this->getLang('fileabbrev');
-                                } else {
-                                    $renderer->doc .= $this->getLang('filelong');
-                                }
-                                $renderer->doc .= ' ' . $this->_filenum . ':</span>';
-                                $renderer->doc .= ' <span class="captiontext">';
-                                break;
-                        }
-                    } else {
-                        $this->_incaption = false;
-                        switch ($this->_type) {
-                            case "figure" :
-                                $renderer->doc .= '</span></figcaption>';
-                                break;
-                            case "table" :
-                                $renderer->doc .= '</span></div>';
-                                break;
-                            case "codeblock" :
-                                $renderer->doc .= '</span></div>';
-                                break;
-                            case "fileblock" :
-                                $renderer->doc .= '</span></div>';
-                                break;
-                        }
-                    }
-                    break;
+        list($state, $match, $pos, $params) = $data;
 
-                case DOKU_LEXER_UNMATCHED :
-                    // return the dokuwiki markup within the figure tags
-                    $renderer->doc .= $renderer->_xmlEntities($match);
-                    break;
+        $langset = ($this->getConf('abbrev') ? 'abbrev' : 'long');
 
-                case DOKU_LEXER_EXIT :
-                    // increment figure/table number
-                    switch ($this->_type) {
-                        case "figure" :
-                            $this->_fignum++;
-                            $renderer->doc .= '</figure>';
-                            break;
-                        case "table" :
-                            $this->_tabnum++;
-                            $renderer->doc .= '</div>';
-                            break;
-                        case "codeblock" :
-                            $this->_codenum++;
-                            $renderer->doc .= '</div>';
-                            break;
-                        case "fileblock" :
-                            $this->_filenum++;
-                            $renderer->doc .= '</div>';
-                            break;
-                    }
-                    $this->_type = '';
-		    break;
-
-		case DOKU_LEXER_SPECIAL :
-		    list($_type,$_num) = explode('=',trim($match)); 
-                    $_type = trim($_type);
-		    $_num = (int) trim($_num);
-		    if (in_array($_type,$this->_types)) {
-                        switch ($_type) {
-                            case "figure" :
-                                $this->_fignum = $_num;
-                                break;
-                            case "table" :
-				$this->_tabnum = $_num;
-                                break;
-                            case "codeblock" :
-				$this->_codenum = $_num;
-                                break;
-                            case "fileblock" :
-				$this->_filenum = $_num;
-                                break;
-			}
-		    }
-		    break;
-            }
+        if (!in_array($mode, ['xhtml','odt', 'latex'])) {
             return true;
         }
-        
-        if ($mode == 'latex') {
 
-            list($state,$match) = $data;
-            
-            switch ($state) {
-                case DOKU_LEXER_ENTER :
-                    // Handle case that there is a label in the opening tag
-                    list($match,$label) = explode(' ',$match);
-                    if (in_array($match,$this->_types)) {
-                        $this->_type = $match;
-                        switch ($this->_type) {
-                            case "figure" :
-                                $renderer->doc .= '\begin{figure}';
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    $this->_label = $label;
-                                }
-                                break;
-                            case "table" :
-                                $renderer->doc .= '\begin{table}';
-                                if ($label) {
-                                    $this->_label = $label;
-                                }
-                                break;
-                        }
-                    }
-                    break;
+        if ($mode == 'xhtml') {
+            if ($state == DOKU_LEXER_ENTER) {
+                // We know we already have a valid type on entering this
+                $type = $params['type'];
+                $tagtype = $params['xhtml']['tagtype'];
+                $label = $params['label'];
+                $alignment = $params['alignment'];
 
-                case DOKU_LEXER_MATCHED :
-                    // return the dokuwiki markup within the caption tags
-                    if (!$this->_incaption) {
-                        $this->_incaption = true;
-                        $renderer->doc .= '\caption{';
-                    } else {
-                        $renderer->doc .= '}';
-                        $this->_incaption = false;
-                        if ($this->_label) {
-                            $renderer->doc .= "\n" . '\label{'.$this->_label.'}';
-                            $this->_label = '';
-                        }
-                    }
-                    break;
+                // Rendering
+                $markup = '<'.$tagtype.' class="plugin_caption_'.$type.' plugin_caption_'.$alignment.'" ';
 
-                case DOKU_LEXER_UNMATCHED :
-                    // return the dokuwiki markup within the figure tags
-                    $renderer->doc .= $match; //$renderer->_xmlEntities($match);
-                    break;
+                if ($label){
+                    $markup .= 'id="'.$renderer->_xmlEntities($label).'"';
 
-                case DOKU_LEXER_EXIT :
-                    switch ($this->_type) {
-                        case "figure" :
-                            $renderer->doc .= '\end{figure}' . "\n\n";
-                            break;
-                        case "table" :
-                            $renderer->doc .= '\end{table}' . "\n\n";
-                            break;
-                    }
-                    $this->_type = '';
-                    break;
+                $markup .= '>';
+                $renderer->doc .= $markup;
+                return true;
+                }  
             }
-            return true;
+
+            if ($state == DOKU_LEXER_MATCHED) {
+                $captagtype = $params['xhtml']['captagtype'];
+                $incaption = $params['incaption'];
+                $count = $params['type_counter'];
+                $type = $params['type'];
+                $label = $params['label'];
+
+                // Rendering a caption
+                if ($incaption) {
+                    $markup = '<'.$captagtype.' class="plugin_caption_caption"><span class="plugin_caption_caption_number"';
+                    // Set title to label
+                    // if ($label) $markup .= ' title="'.$label.'"';
+                    $markup .= '>';
+                    if ($type == 'subfigure') {
+                        $markup .= '('.$this->number_to_alphabet($count).') ';
+                    }
+                    else {
+                        $markup .= $this->getLang($type.$langset).' '. $count . ': ';
+                    }
+                    $markup .= '</span><span class="plugin_caption_caption_text">';
+
+                    $renderer->doc .= $markup;
+                } 
+                else {
+                    $renderer->doc .= "</span></$captagtype>";
+                    $renderer->doc .= $match;
+                }
+                return true;
+            }
+
+            if ($state == DOKU_LEXER_UNMATCHED) {
+                // return the dokuwiki markup within the figure tags
+                $renderer->doc .= $renderer->_xmlEntities($match);
+            }
+
+            if ($state == DOKU_LEXER_EXIT) {
+                $tagtype = $params['xhtml']['tagtype'];
+                $renderer->doc .= "</$tagtype>";
+                return true;
+            }
+        }
+
+        if ($mode == 'latex') { 
+            // All Doku $states get type param
+            // Only figure and table supported.
+            $type = $params['type'];
+            if (!in_array($type, ['figure', 'table'])){
+                return true;
+            }
+
+            if ($state == DOKU_LEXER_ENTER) {
+                // Render
+                $renderer->doc .= "\begin{$type}";
+                return true;
+            }   
+            if ($state == DOKU_LEXER_MATCHED) {
+                $incaption = $params['incaption'];
+                $label = $params['label'];
+                if ($incaption) {
+                    $out = '\caption{';
+                } else {
+                    $out .= '}';
+                    if ($label){
+                        $out .= "\n" . "\label{$label}";
+                    }
+                }
+                $renderer->doc = $out;
+                return true;
+            }
+            if ($state == DOKU_LEXER_UNMATCHED) {
+                // Pass it through
+                $renderer->doc .= $match;
+                return true;
+            }
+            if ($state == DOKU_LEXER_EXIT) {
+                $renderer->doc .= "\end{$type}";
+                return true;
+            }
         }
         
         /**
@@ -389,116 +303,51 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin {
          *            is allowed, without any additional markup.
          */
         if ($mode == 'odt') {
-
-            list($state,$match) = $data;
-
-            switch ($state) {
-                case DOKU_LEXER_ENTER :
-                    // Handle case that there is a label in the opening tag
-                    list($match,$label) = explode(' ',$match);
-                    if (in_array($match,$this->_types)) {
-                        $this->_type = $match;
-                        switch ($this->_type) {
-                            case "figure" :
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    global $caption_labels;
-                                    $caption_labels[$label] = $this->_fignum;
-                                    $this->_label = $label;
-                                }
-                                break;
-                            case "table" :
-                                // If we have a label, assign it to the global label array
-                                if ($label) {
-                                    global $caption_labels;
-                                    $caption_labels[$label] = $this->_tabnum;
-                                    $this->_label = $label;
-                                }
-                                break;
-                        }
-                        $renderer->p_open();
-                    }
-                    break;
-
-                case DOKU_LEXER_MATCHED :
-                    // return the dokuwiki markup within the caption tags
-                    if (!$this->_incaption) {
-                        $this->_incaption = true;
-                        $renderer->p_close();
-                        switch ($this->_type) {
-                            case "figure" :
-                                $renderer->doc .= '<text:p text:style-name="Illustration">';
-                                if ($this->getConf('abbrev')) {
-                                    $renderer->doc .= $this->getLang('figureabbrev');
-                                } else {
-                                    $renderer->doc .= $this->getLang('figurelong');
-                                }
-                                $renderer->doc .= '<text:sequence text:ref-name="';
-                                if ($this->_label) {
-                                    $renderer->doc .= $this->_label;
-                                    $this->_label = '';
-                                } else {
-                                    $renderer->doc .= 'refIllustration' . $this->_fignum;
-                                }
-                                $renderer->doc .= '" text:name="Illustration" text:formula="ooow:Illustration+1" style:num-format="1">';
-                                $renderer->doc .= ' ' . $this->_fignum . '</text:sequence>: ';
-                                break;
-                            case "table" :
-                                $renderer->doc .= '<text:p text:style-name="Table">';
-                                if ($this->getConf('abbrev')) {
-                                    $renderer->doc .= $this->getLang('tableabbrev');
-                                } else {
-                                    $renderer->doc .= $this->getLang('tablelong');
-                                }
-                                $renderer->doc .= '<text:sequence text:ref-name="';
-                                if ($this->_label) {
-                                    $renderer->doc .= $this->_label;
-                                    $this->_label = '';
-                                } else {
-                                    $renderer->doc .= 'refTable' . $this->_tabnum;
-                                }
-                                $renderer->doc .= '" text:name="Table" text:formula="ooow:Table+1" style:num-format="1">';
-                                $renderer->doc .= ' ' . $this->_tabnum . '</text:sequence>: ';
-                                break;
-                        }
-                    } else {
-                        $renderer->doc .= '</text:p>';
-                        $this->_incaption = false;
-                        switch ($this->_type) {
-                            case "figure" :
-                                $renderer->p_open();
-                                break;
-                            case "table" :
-//                                $renderer->p_open();
-                                break;
-                        }
-                    }
-                    break;
-
-                case DOKU_LEXER_UNMATCHED :
-                    // return the dokuwiki markup within the figure tags
-                    $renderer->cdata($match);
-                    break;
-
-                case DOKU_LEXER_EXIT :
-                    // increment figure/table number
-                    switch ($this->_type) {
-                        case "figure" :
-                            $this->_fignum++;
-                            $renderer->p_close();
-                            break;
-                        case "table" :
-                            $this->_tabnum++;
-                            break;
-                    }
-                    $this->_type = '';
-                    break;
+            // All Doku $states get type param
+            // Only figure and table supported.
+            $type = $params['type'];
+            if (!in_array($type, ['figure', 'table'])) {
+                return true;
             }
-            return true;
-        }
 
-        // unsupported $mode
-        return false;
+            if ($state == DOKU_LEXER_ENTER) {
+                $renderer->p_open();
+                return true;
+            }   
+            if ($state == DOKU_LEXER_MATCHED) {
+                $incaption = $params['incaption'];
+                $count = $params['type_counter'];
+                $type = $params['type'];
+                $label = $params['label'];
+
+                if ($incaption) {
+                    $renderer->p_close();
+                    $style_name = ($type == 'figure' ? 'Illustration' : 'Table');
+                    $labelname = ($label ? $label : 'ref'.$style_name.$count);
+
+                    $out = '<text:p text:style-name="'.$style_name.'">';
+                    $out .= $this->getLang($type.$langset);
+                    $out .= '<text:sequence text:ref-name="'.$labelname.'"';
+                    $out .= 'text:name="'.$style_name.'" text:formula="ooow:'.$style_name.'+1" style:num-format="1">';
+                    $out .= ' ' . $count . '</text:sequence>: ';
+
+                    $renderer->doc .= $out;
+                } else {
+                    $renderer->doc .= '</text:p>';
+                    $renderer->p_open();
+                }
+                return true;
+            }
+            if ($state == DOKU_LEXER_UNMATCHED) {
+                // Pass it through
+                $renderer->cdata($match);
+                return true;
+            }
+            if ($state == DOKU_LEXER_EXIT) {
+                $renderer->p_close();
+                return true;
+            }           
+        }
     }
 }
 

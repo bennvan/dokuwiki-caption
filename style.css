@@ -1,16 +1,35 @@
-div.plugin_caption_figure, figure.plugin_caption_figure {
-    margin-bottom: 1em;
+.plugin_caption_figure {
+    width: fit-content;
 }
 
+.plugin_caption_caption {
+    clear: both;
+}
+
+.plugin_caption_center {
+    display: block;
+    margin: .2em auto;
+}
+
+.plugin_caption_right {
+    float: right;
+    margin: .2em 0 .2em 1em;
+}
+
+.plugin_caption_left {
+    float: left;
+    margin: .2em 1em .2em 0;
+}
+
+
 div.plugin_caption_table {
-    margin-bottom: 1em;
+    
 }
 
 div.plugin_caption_caption, figcaption.plugin_caption_caption {
-    clear:both;
-    margin: 2ex 0ex;
-    border-left: 5px #ccc solid;
-    padding-left: 5px;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.9em;
 }
 
 span.plugin_caption_caption_number {
