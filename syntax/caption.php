@@ -230,7 +230,7 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
                     // Set title to label
                     // if ($label) $markup .= ' title="'.$label.'"';
                     $markup .= '>';
-                    if ($type == 'subfigure') {
+                    if (substr($type, 0, 3) == 'sub') {
                         $markup .= '('.$this->number_to_alphabet($count).') ';
                     }
                     else {
