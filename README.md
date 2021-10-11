@@ -43,7 +43,7 @@ Set counter:
 -------------
 
 ```
-{{setcounter> figure=5}}
+{{setcounter figure=5}}
 ```
 
 ![Example output](example.png "output of Example")
