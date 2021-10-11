@@ -17,15 +17,13 @@ require_once DOKU_PLUGIN.'syntax.php';
 
 class syntax_plugin_caption_subtype extends syntax_plugin_caption_caption
 {
-
+    // Defined separately to ensure that eg <figure> does not exit with </subfigure>;    
     public function connectTo($mode) {
-        parent::connectTo($mode);
         $this->Lexer->addEntryPattern('<subfigure.*?>(?=.*</subfigure>)',$mode, 'plugin_caption_caption');
         $this->Lexer->addEntryPattern('<subtable.*?>(?=.*</subtable>)',$mode, 'plugin_caption_caption');
     }
 
     public function postConnect() {
-        parent::postConnect();
         $this->Lexer->addExitPattern('</subfigure>','plugin_caption_caption');
         $this->Lexer->addExitPattern('</subtable>','plugin_caption_caption');
     }
