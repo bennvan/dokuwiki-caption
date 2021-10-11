@@ -32,7 +32,7 @@ class action_plugin_caption extends DokuWiki_Action_Plugin {
                      'type' => 'format',
                      'title' => $this->getLang('figure'),
                      'icon' => '../../plugins/caption/images/fig.png',
-                     'open' => '<figure center|fig_label>\n',
+                     'open' => '<figure flex-center|fig_label>\n',
                      'sample' => '{{:img |title}}',
                      'close' => '\n<caption>caption</caption>\n</figure>',
                 ),
