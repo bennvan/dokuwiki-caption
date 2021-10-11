@@ -2,8 +2,38 @@
     width: fit-content;
 }
 
+.plugin_caption_subfigure,
+.plugin_caption_subtable {
+    padding: 4px;
+}
+
 .plugin_caption_caption {
     clear: both;
+    width: 100%;
+}
+
+.plugin_caption_flex,
+.plugin_caption_flexleft,
+.plugin_caption_flexright,
+.plugin_caption_flexcenter {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0;
+}
+
+.plugin_caption_flexcenter {
+    clear: both;
+    margin: .2em auto;
+}
+
+.plugin_caption_flexright {
+    float: right;
+}
+
+.plugin_caption_flexleft {
+    float: left;
 }
 
 .plugin_caption_center {
