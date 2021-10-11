@@ -8,7 +8,7 @@ http://till-biskup.de/de/software/dokuwiki/caption
 
 Fixes: 
 - No more 'dangerous' string searches to set reference links.
-- Change syntax to allow alignment variable (left, center, right). Flex will be added in future.
+- Change syntax to allow alignment variable (left, center, right, flex(left|center|right)).
 - Add ability to have subfigures/tables if your template allows.
 - Code easy to expand to caption label more tags if needed.
 - Updated some css styles.
