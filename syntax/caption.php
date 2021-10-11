@@ -15,12 +15,13 @@ if (!defined('DOKU_TAB')) define('DOKU_TAB', "\t");
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 
 require_once DOKU_PLUGIN.'syntax.php';
+require_once 'caption_helper.php';
 
 class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin 
 {
 
     /**
-     * Array containing the types of environment supported by the plugin (to reset counter)
+     * Static variables set to keep track when scope is left.
      */
     private static $_types = array('figure', 'table','codeblock','fileblock');
     private static $_type = '';
@@ -64,22 +65,8 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
         $this->Lexer->addExitPattern('</table>','plugin_caption_caption');
         $this->Lexer->addExitPattern('</codeblock>','plugin_caption_caption');
         $this->Lexer->addExitPattern('</fileblock>','plugin_caption_caption');
-        $this->Lexer->addPattern('<figcaption>(?=.*</figcaption>)','plugin_caption_caption');
-        $this->Lexer->addPattern('</figcaption>','plugin_caption_caption');
-    }
-
-    public function number_to_alphabet($number) {
-        $number = intval($number);
-        if ($number <= 0) {
-            return '';
-        }
-        $alphabet = '';
-        while($number != 0) {
-            $p = ($number - 1) % 26;
-            $number = intval(($number - $p) / 26);
-            $alphabet = chr(65 + $p) . $alphabet;
-        }
-        return strtolower($alphabet);
+        $this->Lexer->addPattern('<caption>','plugin_caption_caption');
+        $this->Lexer->addPattern('</caption>','plugin_caption_caption');
     }
 
     public function handle($match, $state, $pos, Doku_Handler $handler){
@@ -160,7 +147,7 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
             return array($state, $match, $pos, $params);
         }
         if ($state == DOKU_LEXER_SPECIAL){
-            if (strpos($match,'{{setcounter') === false) {
+            if (substr($match,0,13) != '{{setcounter ') {
                 return true;
             }
 
@@ -231,7 +218,7 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
                     // if ($label) $markup .= ' title="'.$label.'"';
                     $markup .= '>';
                     if (substr($type, 0, 3) == 'sub') {
-                        $markup .= '('.$this->number_to_alphabet($count).') ';
+                        $markup .= '('.number_to_alphabet($count).') ';
                     }
                     else {
                         $markup .= $this->getLang($type.$langset).' '. $count . ': ';

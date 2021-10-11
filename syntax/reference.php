@@ -15,6 +15,7 @@ if (!defined('DOKU_TAB')) define('DOKU_TAB', "\t");
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 
 require_once DOKU_PLUGIN.'syntax.php';
+require_once 'caption_helper.php';
 
 class syntax_plugin_caption_reference extends DokuWiki_Syntax_Plugin {
 
@@ -50,22 +51,8 @@ class syntax_plugin_caption_reference extends DokuWiki_Syntax_Plugin {
         $this->Lexer->addSpecialPattern('{{ref>.+?}}',$mode,'plugin_caption_reference');
     }
 
-    public function number_to_alphabet($number) {
-        $number = intval($number);
-        if ($number <= 0) {
-            return '';
-        }
-        $alphabet = '';
-        while($number != 0) {
-            $p = ($number - 1) % 26;
-            $number = intval(($number - $p) / 26);
-            $alphabet = chr(65 + $p) . $alphabet;
-        }
-        return strtolower($alphabet);
-    }
-
     public function handle($match, $state, $pos, Doku_Handler $handler){
-        if (strpos($match,'{{ref>') === false) {
+        if (substr($match,0,6) != '{{ref>') {
             return array();
         }
         return array($state, substr($match,6,-2));
@@ -95,7 +82,7 @@ class syntax_plugin_caption_reference extends DokuWiki_Syntax_Plugin {
                 list($type, $num, $parnum) = $caption_count[$label];
                 if (substr($type, 0, 3) == 'sub') {
                     $type = substr($type, 3);
-                    $markup .= $this->getLang($type.$langset).' '.$parnum.'('.$this->number_to_alphabet($num).')';
+                    $markup .= $this->getLang($type.$langset).' '.$parnum.'('.number_to_alphabet($num).')';
                 }
                 else{
                     $markup .= $this->getLang($type.$langset).' '.$num;
@@ -122,7 +109,7 @@ class syntax_plugin_caption_reference extends DokuWiki_Syntax_Plugin {
         }
 
         // unsupported $mode
-        return false;
+        return true;
     }
 }
 
