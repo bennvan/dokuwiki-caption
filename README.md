@@ -1,4 +1,4 @@
-# caption Plugin for DokuWiki
+# Caption Plugin for DokuWiki Re-write
 
 Add figure and table captions
 
