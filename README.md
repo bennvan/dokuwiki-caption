@@ -21,14 +21,14 @@ New Syntax/ Example:
 ```
 <figure alignment| fig_label>
 	<subfigure left| subfig_label1>
-		{{windtunnels:history:old_pics_0068.jpg?direct&200}}
-		<figcaption>Subfig caption1</figcaption>
+		{{image1.jpg?direct&200}}
+		<caption>Subfig caption1</caption>
 	</subfigure>
 	<subfigure left| subfig_label2>
-		{{windtunnels:history:old_pics_0068.jpg?direct&200}}
-		<figcaption>Subfig caption2</figcaption>
+		{{image2.jpg?direct&200}}
+		<caption>Subfig caption2</caption>
 	</subfigure>
-	<figcaption>Main caption</figcaption>
+	<caption>Main caption</caption>
 </figure>
 ```
 
