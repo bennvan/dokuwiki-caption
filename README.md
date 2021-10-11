@@ -46,6 +46,9 @@ Set counter:
 {{setcounter figure=5}}
 ```
 
+Example output:
+-------------
+
 ![Example output](example.png "output of Example")
 
 If you install this plugin manually, make sure it is installed in
