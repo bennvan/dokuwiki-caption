@@ -4,7 +4,7 @@
 
 .plugin_caption_subfigure,
 .plugin_caption_subtable {
-    padding: 4px;
+    padding: 5px;
 }
 
 .plugin_caption_caption {
@@ -12,27 +12,71 @@
     width: 100%;
 }
 
+/*Caption colon*/
+.plugin_caption_figure > .plugin_caption_caption > .plugin_caption_caption_number:after,
+.plugin_caption_table > .plugin_caption_caption > .plugin_caption_caption_number:after,
+.plugin_caption_codeblock > .plugin_caption_caption > .plugin_caption_caption_number:after,
+.plugin_caption_fileblock > .plugin_caption_caption > .plugin_caption_caption_number:after {
+    content: ': ';
+    font-weight: bold;
+}
+
+/*Caption blank*/
+.plugin_caption_figure.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after,
+.plugin_caption_table.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after,
+.plugin_caption_codeblock.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after,
+.plugin_caption_fileblock.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after {
+    content: ' ';
+}
+
+.plugin_caption_subfigure.plugin_caption_cell-bottom,
+.plugin_caption_subtable.plugin_caption_cell-bottom,
+.plugin_caption_subfigure.plugin_caption_cell-top,
+.plugin_caption_subtable.plugin_caption_cell-top, {
+    display: table;
+    padding: 1rem;
+}
+
+.plugin_caption_cell-bottom > .plugin_caption_caption {
+    display: table-caption;
+    caption-side: bottom;
+}
+
+.plugin_caption_cell-top > .plugin_caption_caption {
+    display: table-caption;
+    caption-side: top;
+}
+
 .plugin_caption_flex,
-.plugin_caption_flexleft,
-.plugin_caption_flexright,
-.plugin_caption_flexcenter {
+.plugin_caption_flex-left,
+.plugin_caption_flex-right,
+.plugin_caption_flex-center,
+.plugin_caption_flex-even {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    justify-content: center;
     margin: 0;
 }
 
-.plugin_caption_flexcenter {
+.plugin_caption_flex-even {
     clear: both;
     margin: .2em auto;
+    justify-content: space-evenly;
 }
 
-.plugin_caption_flexright {
+.plugin_caption_flex-center {
+    clear: both;
+    margin: .2em auto;
+    justify-content: center;
+}
+
+.plugin_caption_flex-right {
+    justify-content: center;
     float: right;
 }
 
-.plugin_caption_flexleft {
+.plugin_caption_flex-left {
+    justify-content: center;
     float: left;
 }
 
@@ -52,10 +96,6 @@
 }
 
 
-div.plugin_caption_table {
-    
-}
-
 div.plugin_caption_caption, figcaption.plugin_caption_caption {
     text-align: center;
     margin-bottom: 0.5rem;
@@ -65,8 +105,6 @@ div.plugin_caption_caption, figcaption.plugin_caption_caption {
 span.plugin_caption_caption_number {
     font-weight: bold;
 }
-
-span.plugin_caption_caption_text {}
 
 div.picker.captionpicker {
     width: auto;
