@@ -56,6 +56,7 @@
     flex-direction: row;
     flex-wrap: wrap;
     margin: 0;
+    align-items: flex-start;
 }
 
 .plugin_caption_flex-even {
