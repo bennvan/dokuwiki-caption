@@ -26,22 +26,22 @@ New Syntax/ Example:
 
 ```
 <figure classes| fig_label>
-	<subfigure classes| subfig_label1>
-		{{image1.jpg?direct&200}}
-		<caption>Subfig caption1</caption>
-	</subfigure>
-	<subfigure classes| subfig_label2>
-		{{image2.jpg?direct&200}}
-		<caption>Subfig caption2</caption>
-	</subfigure>
-	<caption>Main caption</caption>
+ <subfigure classes| subfig_label1>
+	{{image1.jpg?direct&200}}
+	<caption>Subfig caption1</caption>
+ </subfigure>
+ <subfigure classes| subfig_label2>
+	{{image2.jpg?direct&200}}
+	<caption>Subfig caption2</caption>
+ </subfigure>
+ <caption>Main caption</caption>
 </figure>
 ```
 
-Available classes:
+Options:
 ------------
 
- - Alignmet classes: 'left', 'center', 'right', 'flex-left', 'flex-center', 'flex-even', 'flex-right'
+ - Alignment classes: 'left', 'center', 'right', 'flex-left', 'flex-center', 'flex-even', 'flex-right'
  - Caption behaviour: 'cell-bottom', 'cell-top'. This enforces long captions to be no wider than the image/table. Top and bottom refers to position of caption in relation to figure. Most useful to use this with subfigure captions.
  - No colon: 'blank'. Use this if you dont want to print a ':' after the figure number.
 
@@ -50,23 +50,23 @@ Example with centering with caption but no label:
 
 ```
 <figure flex-center blank>
-	{{image1.jpg?direct&200}}
-	<caption></caption>
+ {{image1.jpg?direct&200}}
+ <caption></caption>
 </figure>
 ```
 
 Example subfigure with a long caption:
 ```
 <figure flex-center>
-	<subfigure cell-bottom>
-		{{image1.jpg?direct&200}}
-		<caption>A really long subfigure caption much longer than the image that needs to wrap</caption>
-	</subfigure>
-	<subfigure cell-bottom>
-		{{image2.jpg?direct&200}}
-		<caption>A moderately sized subfigure caption</caption>
-	</subfigure>
-	<caption>Main caption</caption>
+ <subfigure cell-bottom>
+ 	{{image1.jpg?direct&200}}
+ <caption>A really long subfigure caption much longer than the image that needs to wrap</caption>
+ </subfigure>
+ <subfigure cell-bottom>
+	{{image2.jpg?direct&200}}
+ <caption>A moderately sized subfigure caption</caption>
+ </subfigure>
+ <caption>Main caption</caption>
 </figure>
 ```
 
