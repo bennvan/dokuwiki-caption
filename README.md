@@ -1,3 +1,6 @@
+## !!Moved to new repo!!
+https://github.com/bennvan/dokuwiki-plugin-latexcaption
+
 # Caption Plugin for DokuWiki Re-write
 
 Add figure and table captions
