@@ -27,6 +27,9 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
     private static $_type = '';
     private static $_incaption = false;
     private static $_label = '';
+    private static $_opts = array();
+    private static $_parOpts = array();
+    private static $_nested = false;
     
     /**
      * return some info
@@ -69,20 +72,28 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
         $this->Lexer->addPattern('</caption>','plugin_caption_caption');
     }
 
+    private function isSubType($type) {
+        return (substr($type, 0, 3) == 'sub');
+    }
+
+    private function getParType($type) {
+        return substr($type, 3);
+    }
+
     public function handle($match, $state, $pos, Doku_Handler $handler){
         $params = [];
         if ($state == DOKU_LEXER_ENTER){
             global $caption_count;
-            // INPUT $match:<type alignment|label>
+            // INPUT $match:<type opts|label>
             // Strip the <>
             $match = substr($match,1,-1);
             // Retrieve the label name if any
             list($matches, $label) = explode('|', $match, 2);
-            // retrieve type and alignment if any
-            list($type, $alignment) = explode(' ', trim($matches), 2);
+            // retrieve type and options if any
+            list($type, $opts) = explode(' ', trim($matches), 2);
 
-            // explode again in the case of multiple alignment classes;
-            $alignment = (!empty($alignment) ? explode(' ', $alignment) : 'noalign');
+            // explode again in the case of multiple options;
+            $opts = (!empty($opts) ? explode(' ', $opts) : ['noalign',]);
 
             // Set dynamic class counter variable
             $type_counter_def = '$_'.$type.'_count';
@@ -92,6 +103,7 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
             // This is ok since we will never have nested figures and more than one caption
             $this::$_type = $type;
             $this::$_label = $label;
+            $this::$_opts = $opts;
             $this->{$type_counter_def} = (!isset($this->{$type_counter_def}) ? 1 : $this->{$type_counter_def}+1);
 
             // save params to class variables (cached for use in render)
@@ -101,17 +113,24 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
             if ($label) {
                 $label = trim($label);
                 // Check if we are counting a subtype to store parent in array for references
-                if (substr($type, 0, 3) == 'sub') {
-                    $partype = substr($type, 3);
+                if ($this->isSubType($type)) {
+                    $partype = $this->getParType($type);
                     $parcount = $this->{'$_'.$partype.'_count'};
                 }
                 $caption_count[$label] = array($type, $type_counter, $parcount);
             }
 
+            //Save parent options for use later
+            if (!$this->isSubType($type)){
+                $this::$_parOpts = $opts;
+            } else {
+                $this::$_nested = true;
+            }
+
             // Set the params
             $params['xhtml']['tagtype'] = (in_array($type, ['figure', 'subfigure']) ? 'figure' : 'div');
             $params['label'] = $label; 
-            $params['alignment'] = $alignment;
+            $params['opts'] = $opts;
             $params['type'] = $type;
 
             return array($state, $match, $pos, $params);
@@ -126,6 +145,9 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
             $params['incaption'] = $this::$_incaption;
             $params['type_counter'] = $this->{'$_'.$type.'_count'};
             $params['type'] = $type;
+            // Decide what caption options to send to renderer
+            $params['opts'] = ($this::$_nested ? $this::$_opts : $this::$_parOpts);
+            
 
             return array($state, $match, $pos, $params);
         }
@@ -138,10 +160,10 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
             if (substr($type, 0, 3) == 'sub') {
                 // Change environment back to non sub type
                 $this::$_type = substr($type, 3);
+                $this::$_nested = false;
             }
             else {
                 // reset subtype counter
-                // echo $type;
                 $this->{'$_sub'.$type.'_count'} = 0;
             }
             $params['type'] = $type;
@@ -192,15 +214,10 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
                 $type = $params['type'];
                 $tagtype = $params['xhtml']['tagtype'];
                 $label = $params['label'];
-                $alignment = $params['alignment'];
+                $opts = $params['opts'];
 
                 // print alignment/additional classes
-                if (is_array($alignment)) {
-                    $classes = implode(' plugin_caption_', $alignment);
-                } else {
-                    $classes = $alignment;
-                }
-
+                $classes = implode(' plugin_caption_', $opts);
                 // Rendering
                 $markup = '<'.$tagtype.' class="plugin_caption_'.$type.' plugin_caption_'.$classes.'" ';
 
@@ -219,6 +236,9 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
                 $count = $params['type_counter'];
                 $type = $params['type'];
                 $label = $params['label'];
+                $opts = $params['opts'];
+
+                $separator = (in_array('blank', $opts) ? '' : ': ');
 
                 // Rendering a caption
                 if ($incaption) {
@@ -230,7 +250,7 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
                         $markup .= '('.number_to_alphabet($count).') ';
                     }
                     else {
-                        $markup .= $this->getLang($type.$langset).' '. $count;
+                        $markup .= $this->getLang($type.$langset).' '. $count.$separator;
                     }
                     $markup .= '</span><span class="plugin_caption_caption_text">';
 
@@ -274,12 +294,12 @@ class syntax_plugin_caption_caption extends DokuWiki_Syntax_Plugin
                 if ($incaption) {
                     $out = '\caption{';
                 } else {
-                    $out .= '}';
+                    $out = '}';
                     if ($label){
                         $out .= "\n" . "\label{$label}";
                     }
                 }
-                $renderer->doc = $out;
+                $renderer->doc .= $out;
                 return true;
             }
             if ($state == DOKU_LEXER_UNMATCHED) {

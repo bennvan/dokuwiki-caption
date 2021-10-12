@@ -12,39 +12,30 @@
     width: 100%;
 }
 
-/*Caption colon*/
-.plugin_caption_figure > .plugin_caption_caption > .plugin_caption_caption_number:after,
-.plugin_caption_table > .plugin_caption_caption > .plugin_caption_caption_number:after,
-.plugin_caption_codeblock > .plugin_caption_caption > .plugin_caption_caption_number:after,
-.plugin_caption_fileblock > .plugin_caption_caption > .plugin_caption_caption_number:after {
-    content: ': ';
-    font-weight: bold;
-}
 
-/*Caption blank*/
-.plugin_caption_figure.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after,
-.plugin_caption_table.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after,
-.plugin_caption_codeblock.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after,
-.plugin_caption_fileblock.plugin_caption_blank > .plugin_caption_caption > .plugin_caption_caption_number:after {
-    content: ' ';
-}
 
 .plugin_caption_subfigure.plugin_caption_cell-bottom,
 .plugin_caption_subtable.plugin_caption_cell-bottom,
 .plugin_caption_subfigure.plugin_caption_cell-top,
 .plugin_caption_subtable.plugin_caption_cell-top, {
-    display: table;
     padding: 1rem;
+}
+
+.plugin_caption_cell-top,
+.plugin_caption_cell-bottom {
+    display: table !important;
 }
 
 .plugin_caption_cell-bottom > .plugin_caption_caption {
     display: table-caption;
     caption-side: bottom;
+    clear: both;
 }
 
 .plugin_caption_cell-top > .plugin_caption_caption {
     display: table-caption;
     caption-side: top;
+    clear: both;
 }
 
 .plugin_caption_flex,
@@ -82,6 +73,7 @@
 }
 
 .plugin_caption_center {
+    clear: both;
     display: block;
     margin: .2em auto;
 }
